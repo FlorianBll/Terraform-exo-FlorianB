@@ -17,16 +17,43 @@ resource "azurerm_subnet" "subnet" {
   address_prefixes     = ["10.0.1.0/24"]
 }
 
+resource "azurerm_network_security_group" "nsg" {
+  name                = "${var.prefix}-nsg"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_network_security_rule" "rules" {
+  for_each = var.nsg_rules
+
+  name                        = each.key
+  priority                    = each.value.priority
+  direction                   = "Inbound"
+  access                      = each.value.access
+  protocol                    = each.value.protocol
+  source_port_range           = "*"
+  destination_port_range      = each.value.port
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.rg.name
+  network_security_group_name = azurerm_network_security_group.nsg.name
+}
+
+resource "azurerm_subnet_network_security_group_association" "nsg_assoc" {
+  subnet_id                 = azurerm_subnet.subnet.id
+  network_security_group_id = azurerm_network_security_group.nsg.id
+}
+
 resource "azurerm_public_ip" "lb_pip" {
-  name                = "pip-loadbalancer"
-  location            = "zurerm_resource_group.rg.location
+  name                = "${var.prefix}-lb-pip"
+  location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Static"
   sku                 = "Standard"
 }
 
 resource "azurerm_lb" "lb" {
-  name                = "lb-tp-web"
+  name                = "${var.prefix}-lb"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   sku                 = "Standard"
@@ -39,12 +66,12 @@ resource "azurerm_lb" "lb" {
 
 resource "azurerm_lb_backend_address_pool" "backend_pool" {
   loadbalancer_id = azurerm_lb.lb.id
-  name            = "BackEndAddressPool"
+  name            = "${var.prefix}-backend-pool"
 }
 
 resource "azurerm_lb_probe" "hp" {
   loadbalancer_id = azurerm_lb.lb.id
-  name            = "http-probe"
+  name            = "${var.prefix}-http-probe"
   port            = 80
 }
 
@@ -90,7 +117,7 @@ resource "azurerm_network_interface_backend_address_pool_association" "nic_assoc
 
 resource "azurerm_linux_virtual_machine" "vm" {
   count               = 2
-  name                = "vm-web-${count.index}"
+  name                = "${var.prefix}-vm-${count.index + 1}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   size                = "Standard_B1s"
@@ -100,8 +127,18 @@ resource "azurerm_linux_virtual_machine" "vm" {
     azurerm_network_interface.nic[count.index].id,
   ]
 
-  admin_password                  = "P@ssw0rd1234!" # Dans un cas réel, utilisez des clés SSH ou des variables secrètes
+  admin_password                  = var.admin_password
   disable_password_authentication = false
+
+  custom_data = base64encode(<<-EOF
+            #!/bin/bash
+			apt-get update
+			apt-get install -y nginx
+			echo "<h1>Hello from VM-X</h1>" > /var/www/html/index.html
+			systemctl start nginx
+			systemctl enable nginx
+              EOF
+  )
 
   os_disk {
     caching              = "ReadWrite"
