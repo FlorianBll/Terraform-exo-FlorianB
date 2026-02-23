@@ -1,9 +1,9 @@
-variable "PREFIX" {
+variable "prefix" {
 	type = string
 	default = "tp-azure"
 }
 
-variable "LOCATION" {
+variable "location" {
 	type = string
 	default = "France Central"
 }
