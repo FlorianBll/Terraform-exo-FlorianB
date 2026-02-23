@@ -11,3 +11,10 @@ ressource "azurerm_resource_group" "example" {
 ressource "azurerm_virtual_network" "example" {
 	name = ${var.prefix}-vnet
 	address_space = ["10.0.0.1/16"]
+	ressource_group_name = azureem_ressource_group.example.name
+
+	subnet {
+		name = ${var.prefix}-subnet
+		address_prefix = "10.0.0.0/24"
+	}
+}
