@@ -1,6 +1,6 @@
 output "ressource_group_id" {
     description = "ID du groupe"
-    value = azurerm_ressource.rg.id
+    value = azurerm_resource_group.rg.id
 }
 
 output "vnet_name" {
@@ -10,5 +10,5 @@ output "vnet_name" {
 
 output "vnet_subnet_id" {
     description = "nom de sous-réseau du réseau virtuel"
-    value = azurerm_virtual_network.vnet.subnet.name
+    value = azurerm_subnet.subnet.id
 }
