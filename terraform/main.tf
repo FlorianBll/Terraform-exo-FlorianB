@@ -17,6 +17,31 @@ resource "azurerm_subnet" "subnet" {
   address_prefixes     = ["10.0.1.0/24"]
 }
 
+resource "azurerm_public_ip" "nat_pip" {
+  name                = "${var.prefix}-nat-pip"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_nat_gateway" "nat" {
+  name                    = "${var.prefix}-nat"
+  location                = azurerm_resource_group.rg.location
+  resource_group_name     = azurerm_resource_group.rg.name
+  sku_name                = "Standard"
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "nat_assoc" {
+  nat_gateway_id       = azurerm_nat_gateway.nat.id
+  public_ip_address_id = azurerm_public_ip.nat_pip.id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "subnet_nat" {
+  subnet_id      = azurerm_subnet.subnet.id
+  nat_gateway_id = azurerm_nat_gateway.nat.id
+}
+
 resource "azurerm_network_security_group" "nsg" {
   name                = "${var.prefix}-nsg"
   location            = azurerm_resource_group.rg.location
@@ -131,13 +156,13 @@ resource "azurerm_linux_virtual_machine" "vm" {
   disable_password_authentication = false
 
   custom_data = base64encode(<<-EOF
-            #!/bin/bash
-			apt-get update
-			apt-get install -y nginx
-			echo "<h1>Hello from VM-X</h1>" > /var/www/html/index.html
-			systemctl start nginx
-			systemctl enable nginx
-              EOF
+        #!/bin/bash
+			  apt-get update
+			  apt-get install -y nginx
+			  echo "<h1>Hello from $(hostname)</h1>" > /var/www/html/index.html
+			  systemctl start nginx
+			  systemctl enable nginx
+        EOF
   )
 
   os_disk {

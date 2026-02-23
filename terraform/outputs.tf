@@ -12,3 +12,8 @@ output "vnet_subnet_id" {
     description = "nom de sous-réseau du réseau virtuel"
     value = azurerm_subnet.subnet.id
 }
+
+output "public_ip_address" {
+    description = "Adresse IP publique du site web"
+    value = azurerm_public_ip.lb_pip.ip_address
+}
